@@ -1,0 +1,9 @@
+/target
+docs/*
+src/upload_handler.py-oauth2.json
+data/sounds
+src/voice_gen.ipynb
+data/output
+/.idea
+data/inputs/confessions.csv
+data/inputs/input.mp4
