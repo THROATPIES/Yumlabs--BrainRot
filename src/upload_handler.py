@@ -126,7 +126,7 @@ def resumable_upload(insert_request, youtube):
                 if "id" in response:
                     video_id = response["id"]
                     print("Video id '%s' was successfully uploaded." % video_id)
-                    playlist_id = "PLtSPMujuWw6CbfJpPVSzkPICewVIcKi8n"
+                    playlist_id = "PLO-PREE1cmUlkCDaXmkM5WquyKRWEqjJc"
                     add_video_to_playlist(youtube, video_id, playlist_id)
                 else:
                     exit("The upload failed with an unexpected response: %s" % response)
