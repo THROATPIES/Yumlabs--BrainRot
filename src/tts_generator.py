@@ -20,6 +20,7 @@ def generate_tts(text, output_audio_path, voice='af_bella', lang_code='a'):
 
     if all_audio:
         final_audio = torch.cat(all_audio, dim=0)
+        print(f"Total audio length: {len(final_audio)} samples ({len(final_audio)/24000:.2f} seconds)")
 
         sf.write(output_audio_path, final_audio, 24000)
         print(f"TTS audio generated successfully at: {output_audio_path}")
