@@ -6,6 +6,7 @@ mod tts;
 mod upload;
 mod utils;
 mod video;
+mod splitter;
 
 #[derive(Debug)]
 struct VideoMetadata {
@@ -59,6 +60,41 @@ async fn process_video(
         constants::UPLOAD_CATEGORY,
         constants::UPLOAD_PRIVACY,
     )?;
+
+    // // Check if we need to split the video
+    // let split_result = splitter::split_media(
+    //     constants::AUDIO_OUTPUT_PATH,
+    //     constants::VIDEO_OUTPUT_PATH,
+    //     constants::OUTPUTS_FOLDER,
+    // )?;
+
+    // // Upload each part
+    // for (i, video_path) in split_result.video_paths.iter().enumerate() {
+    //     let part_number = i + 1;
+    //     let formatted_title = format!(
+    //         "Reddit Confessions #{} | {} (Part {}/{})",
+    //         constants::CURRENT_EPISODE,
+    //         metadata.title,
+    //         part_number,
+    //         split_result.video_paths.len()
+    //     );
+
+    //     let keywords_joined = metadata.keywords.join(",");
+
+    //     println!("{:?}", keywords_joined);
+        
+    //     upload::handle_upload(
+    //         video_path.to_str().unwrap(),
+    //         &formatted_title,
+    //         &metadata.description,
+    //         &keywords_joined,
+    //         constants::UPLOAD_CATEGORY,
+    //         constants::UPLOAD_PRIVACY,
+    //     )?;
+
+    //     // Wait a bit between uploads
+    //     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    // }
 
     Ok(())
 }
