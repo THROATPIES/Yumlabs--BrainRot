@@ -1,4 +1,4 @@
-pub const CURRENT_EPISODE: i32 = 5;
+pub const CURRENT_EPISODE: i32 = 6;
 pub const OUTPUTS_FOLDER: &str = "data/output";
 pub const AUDIO_OUTPUT_PATH: &str = "data/output/output.wav";
 pub const VIDEO_INPUT_PATH: &str = "data/inputs/input.mp4";
