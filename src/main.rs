@@ -48,7 +48,7 @@ async fn process_video(
 
     let formatted_title = format!(
         "Reddit Confessions #{} | {}",
-        constants::CURRENT_EPISODE,
+        utils::get_current_episode()?,
         metadata.title
     );
     let keywords_joined = metadata.keywords.join(",");
@@ -95,7 +95,7 @@ async fn process_video(
     //     // Wait a bit between uploads
     //     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     // }
-
+    utils::increment_episode()?;
     Ok(())
 }
 
@@ -107,14 +107,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = utils::notify("Gathering Data ...", "data/sounds/Popup.wav").await;
 
     let confession_result = confession::read_random_valid_confession()?;
-    println!("{:?}", confession_result);
+    println!("Confession Result: {:?}", confession_result);
 
     let formatted_confession =
         format!("{} {}", confession_result.title, confession_result.selftext);
 
     let metadata = generate_metadata(&formatted_confession).await?;
     println!(
-        "{} \n {} \n {:?}",
+        "Metadata Shit: {} \n {} \n {:?}",
         metadata.title, metadata.description, metadata.keywords
     );
 
