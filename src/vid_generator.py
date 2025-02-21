@@ -36,7 +36,7 @@ def generate_video(
         video_clip = video_clip.with_volume_scaled(0.8)
         
         subtitle_fontsize = int(subtitle_fontsize)
-        dir_font = "data/Roboto-Bold.ttf"
+        dir_font = 'data\inputs\Roboto-Bold.ttf'
 
         words = [word.replace("\\'", "'") for word in formatted_text.split()]
         
