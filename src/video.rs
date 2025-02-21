@@ -25,6 +25,7 @@ pub fn generate_video(
     execute_command(&mut cmd)
 }
 
+
 fn build_command(
     video_clip_path: &str,
     audio_clip_path: &str,
