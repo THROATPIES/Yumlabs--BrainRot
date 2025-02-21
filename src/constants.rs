@@ -1,8 +1,6 @@
-pub const CURRENT_EPISODE: i32 = 7;
 pub const OUTPUTS_FOLDER: &str = "data/output";
 pub const AUDIO_OUTPUT_PATH: &str = "data/output/output.wav";
 pub const VIDEO_INPUT_PATH: &str = "data/inputs/input.mp4";
-// pub const VIDEO_INPUT_PATH: &str = "data/inputs/input_2.mp4";
 pub const VIDEO_OUTPUT_PATH: &str = "data/output/output.mp4";
 pub const AUDIO_VOICE: Option<&str> = Some("af_bella");
 pub const AUDIO_MODEL: Option<&str> = Some("a");
