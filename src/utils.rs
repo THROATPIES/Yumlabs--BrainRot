@@ -39,3 +39,22 @@ pub async fn clear_output_folder(folder_path: &str) -> Result<(), std::io::Error
     }
     Ok(())
 }
+
+
+pub fn get_current_episode() -> Result<u32, Box<dyn std::error::Error>> {
+    let content = fs::read_to_string("data/current_episode.json")?;
+    let json: serde_json::Value = serde_json::from_str(&content)?;
+    Ok(json["episode"].as_u64().unwrap() as u32)
+}
+
+pub fn increment_episode() -> Result<(), Box<dyn std::error::Error>> {
+    let current = get_current_episode()?;
+    let new_content = json!({
+        "episode": current + 1
+    });
+    fs::write(
+        "data/current_episode.json",
+        serde_json::to_string_pretty(&new_content)?
+    )?;
+    Ok(())
+}
