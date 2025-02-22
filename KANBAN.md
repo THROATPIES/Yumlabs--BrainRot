@@ -72,12 +72,12 @@
 ## ✅ Completed
 
 ### Quality Control
-- [x] Audio clarity checks
-- [x] Video resolution validation
-- [x] Caption readability tests
-- [x] Content appropriateness filter
-- [x] Manual review queue
-- [x] Profanity filter
+- [ ] Audio clarity checks
+- [ ] Video resolution validation
+- [ ] Caption readability tests
+- [ ] Content appropriateness filter
+- [ ] Manual review queue
+- [ ] Profanity filter
 
 ## 🚫 Blocked
 
