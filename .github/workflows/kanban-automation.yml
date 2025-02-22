@@ -4,16 +4,11 @@ on:
   push:
     paths:
       - 'KANBAN.md'
-  workflow_dispatch:  # Allows manual triggering
-
-permissions:
-  contents: read
-  issues: write
-  repository-projects: write
+  workflow_dispatch:
 
 env:
-  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  PROJECT_NUMBER: 1  # Update this with your project number
+  GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+  PROJECT_NUMBER: 1
 
 jobs:
   sync-kanban:
