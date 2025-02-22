@@ -16,9 +16,7 @@ const APPROX_RECORDS_PER_SAMPLE: usize = 100_000;
 const RECORDS_TO_TAKE: usize = 10;
 
 fn is_valid_text(text: &str) -> bool {
-    !text.is_empty()
-        && !text.contains("[removed]")
-        && !text.contains("[deleted]")
+    !text.is_empty() && !text.contains("[removed]") && !text.contains("[deleted]")
 }
 
 fn extract_confession_from_record(record: &csv::StringRecord) -> Option<Confession> {
@@ -26,7 +24,6 @@ fn extract_confession_from_record(record: &csv::StringRecord) -> Option<Confessi
     let title = record.get(10).unwrap_or("");
 
     if is_valid_text(selftext) && is_valid_text(title) {
-
         let selftext = selftext
             .replace(r"\n", " ")
             .replace("\n", " ")

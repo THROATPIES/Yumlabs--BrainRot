@@ -26,6 +26,7 @@ DEFAULT_CATEGORY = "22"
 DEFAULT_TITLE = "Test Title"
 DEFAULT_DESCRIPTION = "Test Description"
 DEFAULT_KEYWORDS = ""
+PLAYLIST_ID = ""
 
 
 RETRIABLE_EXCEPTIONS = (
@@ -94,7 +95,7 @@ def initialize_upload(youtube, options):
         media_body=MediaFileUpload(options.file, chunksize=-1, resumable=True),
     )
 
-    resumable_upload(insert_request, youtube)
+    resumable_upload(insert_request, youtube, options.playlistId)  # Pass the playlist ID
 
 
 def add_video_to_playlist(youtube, video_id, playlist_id):
@@ -113,7 +114,7 @@ def add_video_to_playlist(youtube, video_id, playlist_id):
         raise  
 
 
-def resumable_upload(insert_request, youtube):
+def resumable_upload(insert_request, youtube, playlist_id):
     """Handles resumable uploads with exponential backoff."""
     response = None
     retry = 0
@@ -126,8 +127,8 @@ def resumable_upload(insert_request, youtube):
                 if "id" in response:
                     video_id = response["id"]
                     print("Video id '%s' was successfully uploaded." % video_id)
-                    playlist_id = "PLO-PREE1cmUlkCDaXmkM5WquyKRWEqjJc"
-                    add_video_to_playlist(youtube, video_id, playlist_id)
+                    if playlist_id:  # Only add to playlist if ID is provided
+                        add_video_to_playlist(youtube, video_id, playlist_id)
                 else:
                     exit("The upload failed with an unexpected response: %s" % response)
         except HttpError as e:
@@ -163,6 +164,7 @@ def main():
         default=VALID_PRIVACY_STATUSES[0],
         help="Video privacy status.",
     )
+    argparser.add_argument("--playlistId", help="Playlist ID to add the video to")
     args = argparser.parse_args()
 
     if not os.path.exists(args.file):

@@ -83,6 +83,7 @@
 - [x] Manual review queue
 - [x] Profanity filter
 - [x] Video resolution validation
+- [x] Move playlist_id to constants
 
 ---
 

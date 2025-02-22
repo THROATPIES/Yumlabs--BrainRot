@@ -1,13 +1,6 @@
-use std::{
-    fs::File,
-    path::Path,
-    process::Command,
-};
+use std::{fs::File, path::Path, process::Command};
 use symphonia::core::{
-    codecs::CODEC_TYPE_NULL,
-    formats::FormatOptions,
-    io::MediaSourceStream,
-    meta::MetadataOptions,
+    codecs::CODEC_TYPE_NULL, formats::FormatOptions, io::MediaSourceStream, meta::MetadataOptions,
     probe::Hint,
 };
 
@@ -24,7 +17,8 @@ struct VideoGeneratorConfig<'a> {
 }
 
 fn execute_command(cmd: &mut Command) -> ResultString<()> {
-    let output = cmd.output()
+    let output = cmd
+        .output()
         .map_err(|e| format!("Failed to execute video generation script: {}", e))?;
 
     if output.status.success() {
@@ -41,27 +35,36 @@ pub fn get_duration_from_audio(audio_clip_path: &str) -> ResultString<f32> {
     let format = probe_audio_format(mss)?;
     let track = find_audio_track(&format)?;
     let duration = calculate_duration(&track)?;
-    
+
     Ok(duration as f32)
 }
 
 fn open_audio_file(path: &str) -> ResultString<File> {
-    File::open(Path::new(path))
-        .map_err(|e| format!("Failed to open audio file: {}", e))
+    File::open(Path::new(path)).map_err(|e| format!("Failed to open audio file: {}", e))
 }
 
-fn probe_audio_format(mss: MediaSourceStream) -> ResultString<Box<dyn symphonia::core::formats::FormatReader>> {
+fn probe_audio_format(
+    mss: MediaSourceStream,
+) -> ResultString<Box<dyn symphonia::core::formats::FormatReader>> {
     let mut hint = Hint::new();
     hint.with_extension("wav");
 
     symphonia::default::get_probe()
-        .format(&hint, mss, &FormatOptions::default(), &MetadataOptions::default())
+        .format(
+            &hint,
+            mss,
+            &FormatOptions::default(),
+            &MetadataOptions::default(),
+        )
         .map_err(|e| format!("Probe error: {}", e))
         .map(|probed| probed.format)
 }
 
-fn find_audio_track(format: &Box<dyn symphonia::core::formats::FormatReader>) -> ResultString<symphonia::core::formats::Track> {
-    format.tracks()
+fn find_audio_track(
+    format: &Box<dyn symphonia::core::formats::FormatReader>,
+) -> ResultString<symphonia::core::formats::Track> {
+    format
+        .tracks()
         .iter()
         .find(|t| t.codec_params.codec != CODEC_TYPE_NULL)
         .ok_or("No supported audio tracks".to_string())
@@ -69,9 +72,15 @@ fn find_audio_track(format: &Box<dyn symphonia::core::formats::FormatReader>) ->
 }
 
 fn calculate_duration(track: &symphonia::core::formats::Track) -> ResultString<f64> {
-    track.codec_params.time_base
-        .and_then(|time_base| track.codec_params.n_frames
-            .map(|frames| (frames as f64 * time_base.numer as f64) / time_base.denom as f64))
+    track
+        .codec_params
+        .time_base
+        .and_then(|time_base| {
+            track
+                .codec_params
+                .n_frames
+                .map(|frames| (frames as f64 * time_base.numer as f64) / time_base.denom as f64)
+        })
         .ok_or("Could not calculate duration".to_string())
 }
 
@@ -91,7 +100,7 @@ pub fn execute_python_video_generator(
         subtitle_fontsize,
         subtitle_color,
     };
-    
+
     let mut cmd = build_python_command(&config);
     execute_command(&mut cmd)
 }

@@ -166,8 +166,31 @@ async fn get_valid_confession_and_metadata(
                     && !metadata.title.to_lowercase().contains("i cannot")
                     && !metadata.title.to_lowercase().contains("unable to process")
                 {
-                    println!("Valid confession found on attempt {}", attempt + 1);
-                    return Ok((confession_result, metadata));
+                    // Generate TTS and check duration
+                    tts::generate_tts(
+                        &formatted_confession,
+                        constants::AUDIO_OUTPUT_PATH,
+                        constants::AUDIO_VOICE,
+                        constants::AUDIO_MODEL,
+                    )?;
+
+                    let video_duration =
+                        video::get_duration_from_audio(constants::AUDIO_OUTPUT_PATH)?;
+
+                    if video_duration >= constants::MINIMUM_VIDEO_DURATION {
+                        println!(
+                            "Valid confession found on attempt {} with duration {:.2}s",
+                            attempt + 1,
+                            video_duration
+                        );
+                        return Ok((confession_result, metadata));
+                    } else {
+                        println!(
+                            "Confession duration {:.2}s too short (minimum {:.2}s). Retrying...",
+                            video_duration,
+                            constants::MINIMUM_VIDEO_DURATION
+                        );
+                    }
                 }
             }
             Err(e) => {
@@ -205,31 +228,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Metadata: {} \n {} \n {:?}",
         metadata.title, metadata.description, metadata.keywords
     );
-    tokio::time::sleep(Duration::from_secs(2)).await;
-    notify_with_sound("Generating Audio ...", "data/sounds/Ani_Alert.wav").await?;
-
-    tts::generate_tts(
-        &formatted_confession,
-        constants::AUDIO_OUTPUT_PATH,
-        constants::AUDIO_VOICE,
-        constants::AUDIO_MODEL,
-    )?;
-    tokio::time::sleep(Duration::from_secs(2)).await;
 
     notify_with_sound("Audio Created !!!", "data/sounds/Ani_Success.wav").await?;
 
     let video_duration = video::get_duration_from_audio(constants::AUDIO_OUTPUT_PATH)?;
-
     println!("Video Duration: {} seconds", video_duration);
 
     if video_duration <= constants::MAX_VIDEO_DURATION {
         notify_with_sound("Short Video ...", "data/sounds/Ani_Alert.wav").await?;
-
         process_short_video(&formatted_confession, &metadata).await?;
     } else {
         notify_with_sound("Long Video ...", "data/sounds/Ani_Alert.wav").await?;
         process_long_video(&metadata, &formatted_confession).await?;
     }
+
     tokio::time::sleep(Duration::from_secs(2)).await;
     notify_with_sound(
         "Video Created & Uploaded !!!",

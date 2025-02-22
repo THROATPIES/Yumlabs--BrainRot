@@ -13,3 +13,4 @@ data/inputs/*.mp4
 src/BrainRotBot.code-workspace
 src/vid_generator.py
 data/current_episode.json
+docs/KANBAN_TEMPLATE.md

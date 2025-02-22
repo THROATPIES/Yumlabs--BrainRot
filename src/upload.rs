@@ -31,12 +31,12 @@ pub fn handle_upload(
     privacy_status: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let child = create_upload_process(
-        file_path, 
-        title, 
-        description, 
-        keywords, 
-        category, 
-        privacy_status
+        file_path,
+        title,
+        description,
+        keywords,
+        category,
+        privacy_status,
     )?;
 
     process_upload(child)
@@ -52,12 +52,20 @@ fn create_upload_process(
 ) -> Result<std::process::Child, UploadError> {
     Command::new("python")
         .arg("src/upload_handler.py")
-        .arg("--file").arg(file_path)
-        .arg("--title").arg(title)
-        .arg("--description").arg(description)
-        .arg("--keywords").arg(keywords)
-        .arg("--category").arg(category)
-        .arg("--privacyStatus").arg(privacy_status)
+        .arg("--file")
+        .arg(file_path)
+        .arg("--title")
+        .arg(title)
+        .arg("--description")
+        .arg(description)
+        .arg("--keywords")
+        .arg(keywords)
+        .arg("--category")
+        .arg(category)
+        .arg("--privacyStatus")
+        .arg(privacy_status)
+        .arg("--playlistId")
+        .arg(crate::constants::YOUTUBE_PLAYLIST_ID)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -90,10 +98,10 @@ fn log_output(line: &str) {
 }
 
 fn handle_process_completion(
-    mut child: std::process::Child
+    mut child: std::process::Child,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let status = child.wait()?;
-    
+
     if !status.success() {
         return handle_error(child);
     }
