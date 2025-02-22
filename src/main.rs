@@ -99,7 +99,9 @@ async fn process_short_video(
 
     let episode = utils::get_current_episode()?;
     upload_video(constants::VIDEO_OUTPUT_PATH, metadata, episode, None).await?;
-    utils::increment_episode()?;
+    if !constants::IS_DEBUGGING {
+        utils::increment_episode()?;
+    }
 
     Ok(())
 }
@@ -108,23 +110,17 @@ async fn process_long_video(
     metadata: &VideoMetadata,
     formatted_confession: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // First generate the complete video with subtitles
     generate_base_video(formatted_confession).await?;
 
-    // Split the generated video into parts and get paths
-    let split_result = splitter::split_media(
-        constants::VIDEO_OUTPUT_PATH,
-        constants::OUTPUTS_FOLDER,
-    )?;
+    let split_result =
+        splitter::split_media(constants::VIDEO_OUTPUT_PATH, constants::OUTPUTS_FOLDER)?;
 
     let total_parts = split_result.video_paths.len();
     let episode = utils::get_current_episode()?;
 
-    // Upload each part
     for (i, video_path) in split_result.video_paths.iter().enumerate() {
         let part_number = i + 1;
 
-        // Skip the original backup file
         if !video_path.to_str().unwrap().contains("original_") {
             upload_video(
                 video_path.to_str().unwrap(),
@@ -138,8 +134,9 @@ async fn process_long_video(
         }
     }
 
-    // Increment episode after all parts are uploaded
-    utils::increment_episode()?;
+    if !constants::IS_DEBUGGING {
+        utils::increment_episode()?;
+    }
 
     Ok(())
 }
@@ -160,10 +157,8 @@ async fn get_valid_confession_and_metadata(
         let formatted_confession =
             format!("{} {}", confession_result.title, confession_result.selftext);
 
-        // Try to generate metadata
         match generate_metadata(&formatted_confession).await {
             Ok(metadata) => {
-                // Check if the title contains any rejection phrases
                 if !metadata
                     .title
                     .to_lowercase()
@@ -199,7 +194,8 @@ async fn get_valid_confession_and_metadata(
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     utils::clear_output_folder(constants::OUTPUTS_FOLDER).await?;
-    notify_with_sound("Gathering Data ...", "data/sounds/Popup.wav").await?;
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    notify_with_sound("Gathering Data ...", "data/sounds/Ani_Alert.wav").await?;
 
     let (confession_result, metadata) = get_valid_confession_and_metadata().await?;
     let formatted_confession =
@@ -209,8 +205,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Metadata: {} \n {} \n {:?}",
         metadata.title, metadata.description, metadata.keywords
     );
-
-    notify_with_sound("Generating Audio ...", "data/sounds/Popup.wav").await?;
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    notify_with_sound("Generating Audio ...", "data/sounds/Ani_Alert.wav").await?;
 
     tts::generate_tts(
         &formatted_confession,
@@ -220,22 +216,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    notify_with_sound("Audio Created !!!", "data/sounds/TaskDone.wav").await?;
+    notify_with_sound("Audio Created !!!", "data/sounds/Ani_Success.wav").await?;
 
     let video_duration = video::get_duration_from_audio(constants::AUDIO_OUTPUT_PATH)?;
 
     println!("Video Duration: {} seconds", video_duration);
 
     if video_duration <= constants::MAX_VIDEO_DURATION {
-        notify_with_sound("Short Video ...", "data/sounds/Popup.wav").await?;
+        notify_with_sound("Short Video ...", "data/sounds/Ani_Alert.wav").await?;
 
         process_short_video(&formatted_confession, &metadata).await?;
     } else {
-        notify_with_sound("Long Video ...", "data/sounds/Popup.wav").await?;
+        notify_with_sound("Long Video ...", "data/sounds/Ani_Alert.wav").await?;
         process_long_video(&metadata, &formatted_confession).await?;
     }
-
-    notify_with_sound("Video Created & Uploaded !!!", "data/sounds/TaskDone.wav").await?;
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    notify_with_sound(
+        "Video Created & Uploaded !!!",
+        "data/sounds/Ani_Success.wav",
+    )
+    .await?;
 
     Ok(())
 }
