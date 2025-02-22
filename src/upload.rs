@@ -47,8 +47,14 @@ pub fn handle_upload(
         let reader = BufReader::new(stdout);
         reader.lines().for_each(|line| {
             match line {
-                Ok(line) => println!("Upload.rs, Match line {}", line),
-                Err(e) => eprintln!("Upload.rs, Match line Error reading stdout: {}", e),
+                Ok(line) => {
+                    if line.contains("error") {
+                        eprintln!("Upload error: {}", line);
+                    } else {
+                        println!("Upload progress: {}", line);
+                    }
+                },
+                Err(e) => eprintln!("Error reading stdout: {}", e),
             }
         });
     }
@@ -68,6 +74,6 @@ pub fn handle_upload(
         };
     }
 
-    println!("Upload.rs, Upload completed successfully");
+    println!("Upload completed successfully");
     Ok(())
 }
