@@ -2,9 +2,8 @@ use std::fs;
 use reqwest;
 use serde_json::json;
 
-const NOTIFICATION_URL: &str = "http://127.0.0.1:8080/notify";
-const EPISODE_FILE_PATH: &str = "data/current_episode.json";
-const MAX_TITLE_LENGTH: usize = 100;
+use crate::constants;
+
 
 #[derive(Debug)]
 pub struct NotificationError(String);
@@ -23,7 +22,7 @@ pub async fn notify(message: &str, sound: &str) -> Result<(), Box<dyn std::error
         "sound": sound,
     });
 
-    let resp = client.post(NOTIFICATION_URL)
+    let resp = client.post(constants::NOTIFICATION_URL)
         .json(&data)
         .send()
         .await?;
@@ -47,7 +46,7 @@ pub async fn clear_output_folder(folder_path: &str) -> Result<(), std::io::Error
 }
 
 pub fn get_current_episode() -> Result<u32, Box<dyn std::error::Error>> {
-    let content = fs::read_to_string(EPISODE_FILE_PATH)?;
+    let content = fs::read_to_string(constants::EPISODE_FILE_PATH)?;
     let json: serde_json::Value = serde_json::from_str(&content)?;
     json["episode"]
         .as_u64()
@@ -60,7 +59,7 @@ pub fn increment_episode() -> Result<(), Box<dyn std::error::Error>> {
     let new_content = json!({ "episode": current + 1 });
     
     fs::write(
-        EPISODE_FILE_PATH,
+        constants::EPISODE_FILE_PATH,
         serde_json::to_string_pretty(&new_content)?
     )?;
     
@@ -78,8 +77,8 @@ pub fn sanitize_title(title: &str) -> String {
         .trim()
         .to_string();
 
-    if sanitized.len() > MAX_TITLE_LENGTH {
-        return sanitized[..MAX_TITLE_LENGTH].trim().to_string();
+    if sanitized.len() > constants::MAX_TITLE_LENGTH {
+        return sanitized[..constants::MAX_TITLE_LENGTH].trim().to_string();
     }
     
     sanitized
