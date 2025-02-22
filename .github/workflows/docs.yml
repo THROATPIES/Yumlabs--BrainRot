@@ -17,7 +17,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.9'
           
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
@@ -29,26 +29,35 @@ jobs:
         run: |
           sed -i 's/docs\\sec.json/docs\/sec.json/g' src/upload_handler.py
           
-      - name: Install Python dependencies
+      - name: Install and verify Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pdoc3
-          pip install google-api-python-client
-          pip install oauth2client
-          pip install httplib2
-          pip install moviepy
-          pip install kokoro
-          pip install torch
-          pip install soundfile
-          pip install imageio-ffmpeg
+          # Install Google API client first
+          pip install --no-cache-dir google-api-python-client
+          pip install --no-cache-dir oauth2client
+          pip install --no-cache-dir httplib2
+          
+          # Install other dependencies
+          pip install --no-cache-dir moviepy kokoro torch soundfile imageio-ffmpeg
+          
+          # Install pdoc3 last
+          pip install --no-cache-dir pdoc3
+          
+          # Verify installations
+          python -c "from googleapiclient import discovery; print('Google API client installed successfully')"
+          python -c "import pdoc; print('pdoc3 installed successfully')"
+          
+      - name: Generate Python Docs
+        run: |
+          # Create an empty __init__.py to make src a package
+          touch src/__init__.py
+          
+          # Set PYTHONPATH and generate docs
+          PYTHONPATH=$PYTHONPATH:$(pwd) pdoc --html src/ --output-dir ./target/doc/python --force
           
       - name: Generate Rust Docs
         run: |
           cargo doc --no-deps
-          
-      - name: Generate Python Docs
-        run: |
-          PYTHONPATH=$PYTHONPATH:$(pwd) pdoc --html src/ --output-dir ./target/doc/python --force
           
       - name: Combine Docs
         run: |
