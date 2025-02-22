@@ -10,23 +10,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          
+      - name: Set up Git
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+          if [ -z "$(git ls-remote --heads origin gh-pages)" ]; then
+            git checkout --orphan gh-pages
+          else
+            git checkout gh-pages
+          fi
 
-    - name: Set up Git
-      run: |
-        git config --global user.name 'github-actions'
-        git config --global user.email 'github-actions@github.com'
-        if [ -z "$(git ls-remote --heads origin gh-pages)" ]; then
-          git checkout --orphan gh-pages
-        else
-          git checkout gh-pages
-        fi
-
-    - name: Build and deploy documentation
-      run: |
-        # Your documentation build and deploy commands here
-        echo "Building and deploying documentation..."
+      - name: Build and deploy documentation
+        run: |
+          # Your documentation build and deploy commands here
+          echo "Building and deploying documentation..."
 
 
 
