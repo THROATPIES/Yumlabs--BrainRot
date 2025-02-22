@@ -5,7 +5,7 @@ use serde_json::json;
 
 pub async fn notify(message: &str, sound: &str) -> Result<(), Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
-    let url = "http://127.0.0.1:8080/notify"; // Assuming your server is running locally on port 8080
+    let url = "http://127.0.0.1:8080/notify";
 
     let data = json!({
         "message": message,
@@ -17,11 +17,9 @@ pub async fn notify(message: &str, sound: &str) -> Result<(), Box<dyn std::error
         .send()
         .await?;
 
-    if resp.status().is_success() {
-        println!("Notification sent successfully!");
-    } else {
+    if !resp.status().is_success() {
         eprintln!("Failed to send notification: {:?}", resp);
-    }
+    } 
 
     Ok(())
 }
@@ -57,4 +55,20 @@ pub fn increment_episode() -> Result<(), Box<dyn std::error::Error>> {
         serde_json::to_string_pretty(&new_content)?
     )?;
     Ok(())
+}
+
+pub fn sanitize_title(title: &str) -> String {
+    let sanitized = title
+        .trim()
+        .replace(|c: char| !c.is_ascii() && !c.is_alphanumeric(), " ")  // Replace non-ASCII/non-alphanumeric chars with space
+        .replace("  ", " ")  // Remove double spaces
+        .trim()
+        .to_string();
+
+    // Ensure the title doesn't exceed YouTube's limits (100 characters is a safe limit)
+    if sanitized.len() > 100 {
+        sanitized[..100].trim().to_string()
+    } else {
+        sanitized
+    }
 }
