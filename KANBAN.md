@@ -54,6 +54,9 @@
 - [ ] Asset caching system
 - [ ] Error recovery system
 
+### Blocking Issues
+- [ ] Community guidelines approval
+
 ## 🧪 Testing
 
 ### Community Features
@@ -85,7 +88,7 @@
 - [ ] YouTube API quota increase
 - [ ] Cloud storage setup
 - [ ] Payment system integration
-- [ ] Community guidelines approval
+
 
 ---
 
