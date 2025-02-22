@@ -6,6 +6,11 @@ on:
       - 'KANBAN.md'
   workflow_dispatch:  # Allows manual triggering
 
+permissions:
+  contents: read
+  issues: write
+  repository-projects: write
+
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   PROJECT_NUMBER: 1  # Update this with your project number
