@@ -1,0 +1,23 @@
+project:
+  name: Reddit Confessions Generator
+  columns:
+    - name: 📋 Backlog
+      type: automated
+    - name: 🔜 Ready for Development
+      type: automated
+    - name: 👨‍💻 In Progress
+      type: automated
+    - name: 🧪 Testing
+      type: automated
+    - name: ✅ Completed
+      type: automated
+    - name: 🚫 Blocked
+      type: automated
+
+  labels:
+    - name: high-priority
+      color: '#FF0000'
+    - name: medium-priority
+      color: '#FFA500'
+    - name: low-priority
+      color: '#00FF00'
