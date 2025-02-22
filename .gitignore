@@ -1,5 +1,8 @@
 /target
-docs/*
+docs/DesignDoc.md
+docs/Useful.md
+docs/sec.json
+docs/scratch/_scratch.rs
 src/upload_handler.py-oauth2.json
 data/sounds
 src/voice_gen.ipynb
@@ -7,7 +10,6 @@ data/output
 /.idea
 data/inputs/*.csv
 data/inputs/*.mp4
-
 src/BrainRotBot.code-workspace
 src/vid_generator.py
 data/current_episode.json

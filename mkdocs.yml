@@ -1,0 +1,14 @@
+site_name: Reddit Confessions Video Generator
+theme:
+  name: material
+  palette:
+    primary: black
+    accent: red
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Usage: usage.md
+  - Contributing: contributing.md
+
+repo_url: https://github.com/THROATPIES/reddit-confessions-generator
