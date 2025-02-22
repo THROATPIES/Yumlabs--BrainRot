@@ -14,17 +14,37 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+          
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pdoc3 google-api-python-client oauth2client httplib2 moviepy kokoro torch soundfile imageio-ffmpeg
+          
       - name: Generate Rust Docs
         run: |
           cargo doc --no-deps
           
       - name: Generate Python Docs
         run: |
-          pip install pdoc3
-          pdoc --html src/
+          pdoc --html src/ --output-dir ./target/doc/python
+          
+      - name: Combine Docs
+        run: |
+          mkdir -p ./target/doc/combined
+          cp -r ./target/doc/* ./target/doc/combined/
           
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./target/doc
+          publish_dir: ./target/doc/combined
