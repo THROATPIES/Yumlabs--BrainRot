@@ -8,5 +8,6 @@ data/output
 data/inputs/confessions.csv
 data/inputs/input.mp4
 data/inputs/input_2.mp4
+data/inputs/input_3.mp4
 src/BrainRotBot.code-workspace
 src/vid_generator.py
