@@ -8,24 +8,21 @@ on:
       - 'docs/**'
 
 jobs:
-  docs:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-          
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: rustfmt, clippy
-          
-      - name: Generate Rust Docs
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Set up Git
         run: |
-          cargo doc --no-deps
-          
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+          if [ -z "$(git ls-remote --heads origin gh-pages)" ]; then
+            git checkout --orphan gh-pages
+          else
+            git checkout gh-pages
+          fi
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./target/doc
-          force_orphan: true
+        run: |
+          # Add your deployment commands here
+
