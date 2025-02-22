@@ -1,12 +1,13 @@
 pub const IS_DEBUGGING: bool = true;
 pub const OUTPUTS_FOLDER: &str = "data/output";
 pub const AUDIO_OUTPUT_PATH: &str = "data/output/output.wav";
-pub const VIDEO_INPUT_PATH: &str = "data/inputs/input.mp4";
+pub const VIDEO_INPUT_PATH: &str = "data/inputs/input_3.mp4";
 pub const VIDEO_OUTPUT_PATH: &str = "data/output/output.mp4";
 pub const AUDIO_VOICE: Option<&str> = Some("af_bella");
 pub const AUDIO_MODEL: Option<&str> = Some("a");
 pub const VIDEO_FONT_SIZE: Option<i32> = Some(48);
-pub const VIDEO_BG_COLOR: Option<&str> = Some("black");
+pub const VIDEO_BG_COLOR: Option<&str> = Some("white");
 pub const UPLOAD_CATEGORY: &str = "22";
 pub const UPLOAD_PRIVACY: &str = "public";
 pub const MAX_VIDEO_DURATION: f32 = 60.0; // Maximum duration in seconds
+pub const MAX_RETRIES: usize = 5;
