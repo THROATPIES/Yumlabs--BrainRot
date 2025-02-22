@@ -3,7 +3,6 @@
 ## 📋 Backlog
 
 ### Content Enhancement
-- [ ] Multi-subreddit support
 - [ ] Sentiment analysis categorization
 - [ ] AI-based music selection
 - [ ] AI thumbnail generation
@@ -40,6 +39,9 @@
 - [ ] Analytics viewer
 
 ## 👨‍💻 In Progress
+
+### Content Enhancement
+- [ ] Multi-subreddit support
 
 ### Automation
 - [ ] Scheduled uploads
