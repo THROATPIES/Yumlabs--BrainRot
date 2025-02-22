@@ -1,4 +1,4 @@
-pub const IS_DEBUGGING: bool = true;
+pub const IS_DEBUGGING: bool = false;
 pub const OUTPUTS_FOLDER: &str = "data/output";
 pub const AUDIO_OUTPUT_PATH: &str = "data/output/output.wav";
 pub const VIDEO_INPUT_PATH: &str = "data/inputs/input_3.mp4";
