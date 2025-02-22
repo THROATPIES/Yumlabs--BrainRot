@@ -1,0 +1,30 @@
+name: Kanban Board Automation
+
+on:
+  push:
+    paths:
+      - 'KANBAN.md'
+  workflow_dispatch:  # Allows manual triggering
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  PROJECT_NUMBER: 1  # Update this with your project number
+
+jobs:
+  sync-kanban:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install PyGithub pyyaml
+
+      - name: Create/Update Project Board
+        run: python .github/scripts/kanban_sync.py
