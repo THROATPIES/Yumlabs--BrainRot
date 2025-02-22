@@ -7,11 +7,31 @@ mod upload;
 mod utils;
 mod video;
 
+use std::time::Duration;
+
+use confession::Confession;
+
 #[derive(Debug)]
 struct VideoMetadata {
     title: String,
     description: String,
     keywords: Vec<String>,
+}
+
+impl VideoMetadata {
+    fn format_title(&self, episode: u32, is_part: Option<(usize, usize)>) -> String {
+        match is_part {
+            Some((part, total)) => format!(
+                "Reddit Confessions #{} | {} (Part {}/{})",
+                episode, self.title, part, total
+            ),
+            None => format!("Reddit Confessions #{} | {} | #shorts", episode, self.title),
+        }
+    }
+
+    fn get_keywords_string(&self) -> String {
+        self.keywords.join(",")
+    }
 }
 
 async fn generate_metadata(
@@ -32,11 +52,8 @@ async fn generate_metadata(
     })
 }
 
-async fn process_video(
-    formatted_text: &str,
-    metadata: &VideoMetadata,
-) -> Result<(), Box<dyn std::error::Error>> {
-    video::generate_video(
+async fn generate_base_video(formatted_text: &str) -> Result<(), Box<dyn std::error::Error>> {
+    video::execute_python_video_generator(
         constants::VIDEO_INPUT_PATH,
         constants::AUDIO_OUTPUT_PATH,
         formatted_text,
@@ -45,14 +62,25 @@ async fn process_video(
         constants::VIDEO_BG_COLOR,
     )?;
 
-    let formatted_title = format!(
-        "Reddit Confessions #{} | {}",
-        utils::get_current_episode()?,
-        metadata.title
-    );
-    let keywords_joined = metadata.keywords.join(",");
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    Ok(())
+}
+
+async fn upload_video(
+    video_path: &str,
+    metadata: &VideoMetadata,
+    episode: u32,
+    is_part: Option<(usize, usize)>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if constants::IS_DEBUGGING {
+        return Ok(());
+    }
+
+    let formatted_title = metadata.format_title(episode, is_part);
+    let keywords_joined = metadata.get_keywords_string();
+
     upload::handle_upload(
-        constants::VIDEO_OUTPUT_PATH,
+        video_path,
         &formatted_title,
         &metadata.description,
         &keywords_joined,
@@ -60,113 +88,129 @@ async fn process_video(
         constants::UPLOAD_PRIVACY,
     )?;
 
-    utils::increment_episode()?;
     Ok(())
 }
 
-async fn split_and_upload(
+async fn process_short_video(
+    formatted_text: &str,
+    metadata: &VideoMetadata,
+) -> Result<(), Box<dyn std::error::Error>> {
+    generate_base_video(formatted_text).await?;
+
+    let episode = utils::get_current_episode()?;
+    upload_video(constants::VIDEO_OUTPUT_PATH, metadata, episode, None).await?;
+    utils::increment_episode()?;
+
+    Ok(())
+}
+
+async fn process_long_video(
     metadata: &VideoMetadata,
     formatted_confession: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // First, check the video duration
-    let video_duration = video::get_video_duration(constants::VIDEO_OUTPUT_PATH)?;
+    // First generate the complete video with subtitles
+    generate_base_video(formatted_confession).await?;
 
-    if video_duration <= constants::MAX_VIDEO_DURATION {
-        // If video is shorter than max duration, just upload it directly
-        let formatted_title = format!(
-            "Reddit Confessions #{} | {}",
-            utils::get_current_episode()?,
-            metadata.title
-        );
-        let keywords_joined = metadata.keywords.join(",");
-        if !constants::IS_DEBUGGING {
-            upload::handle_upload(
-                constants::VIDEO_OUTPUT_PATH,
-                &formatted_title,
-                &metadata.description,
-                &keywords_joined,
-                constants::UPLOAD_CATEGORY,
-                constants::UPLOAD_PRIVACY,
-            )?;
-        }
-
-        return Ok(());
-    }
-
-    // Only split if video is longer than MAX_VIDEO_DURATION
+    // Split the generated video into parts and get paths
     let split_result = splitter::split_media(
-        constants::AUDIO_OUTPUT_PATH,
         constants::VIDEO_OUTPUT_PATH,
         constants::OUTPUTS_FOLDER,
     )?;
 
-    // Process both audio and video files
-    for (i, (audio_path, video_path)) in split_result
-        .audio_paths
-        .iter()
-        .zip(split_result.video_paths.iter())
-        .enumerate()
-    {
+    let total_parts = split_result.video_paths.len();
+    let episode = utils::get_current_episode()?;
+
+    // Upload each part
+    for (i, video_path) in split_result.video_paths.iter().enumerate() {
         let part_number = i + 1;
-        let formatted_title = format!(
-            "Reddit Confessions #{} | {} (Part {}/{})",
-            utils::get_current_episode()?,
-            metadata.title,
-            part_number,
-            split_result.video_paths.len()
-        );
 
-        let combined_video_path = format!(
-            "{}/combined_part_{}.mp4",
-            constants::OUTPUTS_FOLDER,
-            part_number
-        );
+        // Skip the original backup file
+        if !video_path.to_str().unwrap().contains("original_") {
+            upload_video(
+                video_path.to_str().unwrap(),
+                metadata,
+                episode,
+                Some((part_number, total_parts)),
+            )
+            .await?;
 
-        // Generate new video with the split audio and video
-        video::execute_python_video_generator(
-            video_path.to_str().unwrap(),
-            audio_path.to_str().unwrap(),
-            &formatted_confession,
-            &combined_video_path,
-            constants::VIDEO_FONT_SIZE,
-            constants::VIDEO_BG_COLOR,
-        )?;
+            tokio::time::sleep(Duration::from_secs(5)).await;
+        }
+    }
 
-        let keywords_joined = metadata.keywords.join(",");
-        if !constants::IS_DEBUGGING {
-            upload::handle_upload(
-                &combined_video_path,
-                &formatted_title,
-                &metadata.description,
-                &keywords_joined,
-                constants::UPLOAD_CATEGORY,
-                constants::UPLOAD_PRIVACY,
-            )?;
+    // Increment episode after all parts are uploaded
+    utils::increment_episode()?;
+
+    Ok(())
+}
+
+async fn notify_with_sound(
+    message: &str,
+    sound_path: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    utils::notify(message, sound_path).await?;
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    Ok(())
+}
+
+async fn get_valid_confession_and_metadata(
+) -> Result<(Confession, VideoMetadata), Box<dyn std::error::Error>> {
+    for attempt in 0..constants::MAX_RETRIES {
+        let confession_result = confession::read_random_valid_confession()?;
+        let formatted_confession =
+            format!("{} {}", confession_result.title, confession_result.selftext);
+
+        // Try to generate metadata
+        match generate_metadata(&formatted_confession).await {
+            Ok(metadata) => {
+                // Check if the title contains any rejection phrases
+                if !metadata
+                    .title
+                    .to_lowercase()
+                    .contains("cannot create content")
+                    && !metadata.title.to_lowercase().contains("i cannot")
+                    && !metadata.title.to_lowercase().contains("unable to process")
+                {
+                    println!("Valid confession found on attempt {}", attempt + 1);
+                    return Ok((confession_result, metadata));
+                }
+            }
+            Err(e) => {
+                eprintln!(
+                    "Metadata generation failed on attempt {}: {}",
+                    attempt + 1,
+                    e
+                );
+            }
         }
 
-        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        if attempt < constants::MAX_RETRIES - 1 {
+            println!(
+                "Retrying with new confession... ({}/{})",
+                attempt + 1,
+                constants::MAX_RETRIES
+            );
+        }
     }
-    Ok(())
+
+    Err("Failed to find acceptable confession after maximum retries".into())
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     utils::clear_output_folder(constants::OUTPUTS_FOLDER).await?;
+    notify_with_sound("Gathering Data ...", "data/sounds/Popup.wav").await?;
 
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-    let _ = utils::notify("Gathering Data ...", "data/sounds/Popup.wav").await;
-
-    let confession_result = confession::read_random_valid_confession()?;
-    println!("Confession Result: {:?}", confession_result);
-
+    let (confession_result, metadata) = get_valid_confession_and_metadata().await?;
     let formatted_confession =
         format!("{} {}", confession_result.title, confession_result.selftext);
 
-    let metadata = generate_metadata(&formatted_confession).await?;
     println!(
-        "Metadata Shit: {} \n {} \n {:?}",
+        "Metadata: {} \n {} \n {:?}",
         metadata.title, metadata.description, metadata.keywords
     );
+
+    notify_with_sound("Generating Audio ...", "data/sounds/Popup.wav").await?;
 
     tts::generate_tts(
         &formatted_confession,
@@ -174,26 +218,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         constants::AUDIO_VOICE,
         constants::AUDIO_MODEL,
     )?;
+    tokio::time::sleep(Duration::from_secs(2)).await;
 
-    let _ = utils::notify("Audio Created !!!", "data/sounds/TaskDone.wav").await;
+    notify_with_sound("Audio Created !!!", "data/sounds/TaskDone.wav").await?;
 
-    video::execute_python_video_generator(
-        constants::VIDEO_INPUT_PATH,
-        constants::AUDIO_OUTPUT_PATH,
-        &formatted_confession,
-        constants::VIDEO_OUTPUT_PATH,
-        constants::VIDEO_FONT_SIZE,
-        constants::VIDEO_BG_COLOR,
-    )?;
+    let video_duration = video::get_duration_from_audio(constants::AUDIO_OUTPUT_PATH)?;
 
-    if constants::IS_DEBUGGING {
-        split_and_upload(&metadata, &formatted_confession).await?;
-        return Ok(());
+    println!("Video Duration: {} seconds", video_duration);
+
+    if video_duration <= constants::MAX_VIDEO_DURATION {
+        notify_with_sound("Short Video ...", "data/sounds/Popup.wav").await?;
+
+        process_short_video(&formatted_confession, &metadata).await?;
     } else {
-        process_video(&formatted_confession, &metadata).await?;
+        notify_with_sound("Long Video ...", "data/sounds/Popup.wav").await?;
+        process_long_video(&metadata, &formatted_confession).await?;
     }
 
-    let _ = utils::notify("Video Created & Uploaded !!!", "data/sounds/TaskDone.wav").await;
+    notify_with_sound("Video Created & Uploaded !!!", "data/sounds/TaskDone.wav").await?;
 
     Ok(())
 }
