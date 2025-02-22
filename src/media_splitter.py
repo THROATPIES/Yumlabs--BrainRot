@@ -1,52 +1,59 @@
 import sys
-from moviepy import *
 import math
 import os
+import shutil
+import subprocess
 
-def split_media(audio_path, video_path, output_dir, max_duration):
-    # Load the audio and video
-    audio = AudioFileClip(audio_path)
-    video = VideoFileClip(video_path)
+def split_media(video_path, output_dir, max_duration):
+    # First, make a copy of the original video
+    original_filename = os.path.basename(video_path)
+    backup_path = os.path.join(output_dir, f"original_{original_filename}")
+    shutil.copy2(video_path, backup_path)
     
-    total_duration = audio.duration
+    # Get video duration using ffprobe
+    probe = subprocess.run([
+        'ffprobe', 
+        '-v', 'error',
+        '-show_entries', 'format=duration',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        video_path
+    ], capture_output=True, text=True)
+    
+    total_duration = float(probe.stdout)
     num_parts = math.ceil(total_duration / max_duration)
-    
-    audio_paths = []
     video_paths = []
     
     for i in range(num_parts):
         start_time = i * max_duration
         end_time = min((i + 1) * max_duration, total_duration)
         
-        # Split audio
-        audio_part = audio.subclipped(start_time, end_time)
-        audio_output = f"part_{i+1}_audio.wav"
-        audio_full_path = os.path.join(output_dir, audio_output)
-        audio_part.write_audiofile(audio_full_path)
-        print(f"AUDIO:{audio_output}")
-        audio_paths.append(audio_output)
-        
-        # Split video
-        video_part = video.subclipped(start_time, end_time)
         video_output = f"part_{i+1}_video.mp4"
         video_full_path = os.path.join(output_dir, video_output)
-        video_part.write_videofile(video_full_path, audio=False)
+        
+        # Use FFmpeg to split without re-encoding
+        subprocess.run([
+            'ffmpeg',
+            '-i', video_path,
+            '-ss', str(start_time),
+            '-t', str(end_time - start_time),
+            '-c', 'copy',  # Copy without re-encoding
+            '-avoid_negative_ts', '1',
+            video_full_path
+        ], check=True)
+        
         print(f"VIDEO:{video_output}")
         video_paths.append(video_output)
-        
-    audio.close()
-    video.close()
     
-    return audio_paths, video_paths
+    return video_paths
 
 if __name__ == "__main__":
-    if len(sys.argv) != 5:
-        print("Usage: audio_path video_path output_dir max_duration")
+    if len(sys.argv) != 4:
+        print("Usage: video_path output_dir max_duration")
         sys.exit(1)
         
-    audio_path = sys.argv[1]
-    video_path = sys.argv[2]
-    output_dir = sys.argv[3]
-    max_duration = float(sys.argv[4])
+    video_path = sys.argv[1]
+    output_dir = sys.argv[2]
+    max_duration = float(sys.argv[3])
     
-    split_media(audio_path, video_path, output_dir, max_duration)
+    split_media(video_path, output_dir, max_duration)
+
