@@ -1,12 +1,11 @@
-
 mod confession;
 mod constants;
 mod ollama;
+mod splitter;
 mod tts;
 mod upload;
 mod utils;
 mod video;
-mod splitter;
 
 #[derive(Debug)]
 struct VideoMetadata {
@@ -61,41 +60,92 @@ async fn process_video(
         constants::UPLOAD_PRIVACY,
     )?;
 
-    // // Check if we need to split the video
-    // let split_result = splitter::split_media(
-    //     constants::AUDIO_OUTPUT_PATH,
-    //     constants::VIDEO_OUTPUT_PATH,
-    //     constants::OUTPUTS_FOLDER,
-    // )?;
-
-    // // Upload each part
-    // for (i, video_path) in split_result.video_paths.iter().enumerate() {
-    //     let part_number = i + 1;
-    //     let formatted_title = format!(
-    //         "Reddit Confessions #{} | {} (Part {}/{})",
-    //         constants::CURRENT_EPISODE,
-    //         metadata.title,
-    //         part_number,
-    //         split_result.video_paths.len()
-    //     );
-
-    //     let keywords_joined = metadata.keywords.join(",");
-
-    //     println!("{:?}", keywords_joined);
-        
-    //     upload::handle_upload(
-    //         video_path.to_str().unwrap(),
-    //         &formatted_title,
-    //         &metadata.description,
-    //         &keywords_joined,
-    //         constants::UPLOAD_CATEGORY,
-    //         constants::UPLOAD_PRIVACY,
-    //     )?;
-
-    //     // Wait a bit between uploads
-    //     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-    // }
     utils::increment_episode()?;
+    Ok(())
+}
+
+async fn split_and_upload(
+    metadata: &VideoMetadata,
+    formatted_confession: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // First, check the video duration
+    let video_duration = video::get_video_duration(constants::VIDEO_OUTPUT_PATH)?;
+
+    if video_duration <= constants::MAX_VIDEO_DURATION {
+        // If video is shorter than max duration, just upload it directly
+        let formatted_title = format!(
+            "Reddit Confessions #{} | {}",
+            utils::get_current_episode()?,
+            metadata.title
+        );
+        let keywords_joined = metadata.keywords.join(",");
+        if !constants::IS_DEBUGGING {
+            upload::handle_upload(
+                constants::VIDEO_OUTPUT_PATH,
+                &formatted_title,
+                &metadata.description,
+                &keywords_joined,
+                constants::UPLOAD_CATEGORY,
+                constants::UPLOAD_PRIVACY,
+            )?;
+        }
+
+        return Ok(());
+    }
+
+    // Only split if video is longer than MAX_VIDEO_DURATION
+    let split_result = splitter::split_media(
+        constants::AUDIO_OUTPUT_PATH,
+        constants::VIDEO_OUTPUT_PATH,
+        constants::OUTPUTS_FOLDER,
+    )?;
+
+    // Process both audio and video files
+    for (i, (audio_path, video_path)) in split_result
+        .audio_paths
+        .iter()
+        .zip(split_result.video_paths.iter())
+        .enumerate()
+    {
+        let part_number = i + 1;
+        let formatted_title = format!(
+            "Reddit Confessions #{} | {} (Part {}/{})",
+            utils::get_current_episode()?,
+            metadata.title,
+            part_number,
+            split_result.video_paths.len()
+        );
+
+        let combined_video_path = format!(
+            "{}/combined_part_{}.mp4",
+            constants::OUTPUTS_FOLDER,
+            part_number
+        );
+
+        // Generate new video with the split audio and video
+        video::execute_python_video_generator(
+            video_path.to_str().unwrap(),
+            audio_path.to_str().unwrap(),
+            &formatted_confession,
+            &combined_video_path,
+            constants::VIDEO_FONT_SIZE,
+            constants::VIDEO_BG_COLOR,
+        )?;
+
+        let keywords_joined = metadata.keywords.join(",");
+        if !constants::IS_DEBUGGING {
+            upload::handle_upload(
+                &combined_video_path,
+                &formatted_title,
+                &metadata.description,
+                &keywords_joined,
+                constants::UPLOAD_CATEGORY,
+                constants::UPLOAD_PRIVACY,
+            )?;
+        }
+
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    }
     Ok(())
 }
 
@@ -127,7 +177,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let _ = utils::notify("Audio Created !!!", "data/sounds/TaskDone.wav").await;
 
-    process_video(&formatted_confession, &metadata).await?;
+    video::execute_python_video_generator(
+        constants::VIDEO_INPUT_PATH,
+        constants::AUDIO_OUTPUT_PATH,
+        &formatted_confession,
+        constants::VIDEO_OUTPUT_PATH,
+        constants::VIDEO_FONT_SIZE,
+        constants::VIDEO_BG_COLOR,
+    )?;
+
+    if constants::IS_DEBUGGING {
+        split_and_upload(&metadata, &formatted_confession).await?;
+        return Ok(());
+    } else {
+        process_video(&formatted_confession, &metadata).await?;
+    }
 
     let _ = utils::notify("Video Created & Uploaded !!!", "data/sounds/TaskDone.wav").await;
 
