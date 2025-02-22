@@ -41,9 +41,9 @@
 ## 👨‍💻 In Progress
 
 ### Content Enhancement
+- [ ] Multi-subreddit support
 
 ### Automation
-- [ ] Multi-subreddit support
 - [ ] Scheduled uploads
 - [ ] Batch processing
 - [ ] Playlist auto-creation
