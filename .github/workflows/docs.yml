@@ -17,7 +17,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.x'
           
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
@@ -29,23 +29,16 @@ jobs:
         run: |
           sed -i 's/docs\\sec.json/docs\/sec.json/g' src/upload_handler.py
           
-      - name: Install and verify Python dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          # Install Google API client first
-          pip install --no-cache-dir google-api-python-client
-          pip install --no-cache-dir oauth2client
-          pip install --no-cache-dir httplib2
+          pip install --no-cache-dir -r requirements.txt
           
-          # Install other dependencies
-          pip install --no-cache-dir moviepy kokoro torch soundfile imageio-ffmpeg
-          
-          # Install pdoc3 last
-          pip install --no-cache-dir pdoc3
-          
-          # Verify installations
+      - name: Verify installations
+        run: |
           python -c "from googleapiclient import discovery; print('Google API client installed successfully')"
           python -c "import pdoc; print('pdoc3 installed successfully')"
+          python -c "import moviepy; print('moviepy installed successfully')"
           
       - name: Generate Python Docs
         run: |
