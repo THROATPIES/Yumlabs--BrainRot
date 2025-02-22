@@ -5,10 +5,9 @@ data/sounds
 src/voice_gen.ipynb
 data/output
 /.idea
-data/inputs/confessions.csv
-data/inputs/input.mp4
-data/inputs/input_2.mp4
-data/inputs/input_3.mp4
+data/inputs/*.csv
+data/inputs/*.mp4
+
 src/BrainRotBot.code-workspace
 src/vid_generator.py
 data/current_episode.json
