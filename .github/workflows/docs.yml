@@ -1,0 +1,30 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**/*.rs'
+      - '**/*.py'
+      - 'docs/**'
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Generate Rust Docs
+        run: |
+          cargo doc --no-deps
+          
+      - name: Generate Python Docs
+        run: |
+          pip install pdoc3
+          pdoc --html src/
+          
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./target/doc
