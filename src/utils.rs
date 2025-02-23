@@ -21,20 +21,32 @@ pub async fn notify(message: &str, sound: &str) -> Result<(), Box<dyn std::error
         "sound": sound,
     });
 
-    let resp = client
+    match client
         .post(constants::NOTIFICATION_URL)
         .json(&data)
         .send()
-        .await?;
-
-    if !resp.status().is_success() {
-        return Err(Box::new(NotificationError(format!(
-            "Failed to send notification: {:?}",
-            resp
-        ))));
+        .await
+    {
+        Ok(resp) => {
+            if resp.status() == reqwest::StatusCode::NOT_FOUND {
+                println!("Notification system not available (404).");
+                println!("Would have sent: Message: '{}', Sound: '{}'", message, sound);
+                Ok(())
+            } else if !resp.status().is_success() {
+                Err(Box::new(NotificationError(format!(
+                    "Failed to send notification: {:?}",
+                    resp
+                ))))
+            } else {
+                Ok(())
+            }
+        }
+        Err(e) => {
+            println!("Failed to connect to notification system: {}. Continuing...", e);
+            println!("Would have sent: Message: '{}', Sound: '{}'", message, sound);
+            Ok(())
+        }
     }
-
-    Ok(())
 }
 
 pub async fn clear_output_folder(folder_path: &str) -> Result<(), std::io::Error> {
