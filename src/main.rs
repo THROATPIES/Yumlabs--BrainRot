@@ -6,12 +6,15 @@ mod tts;
 mod upload;
 mod utils;
 mod video;
+// mod video_generator;
 
 use std::time::Duration;
+use tokio::task;
+use futures::future::join_all;
 
 use confession::Confession;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct VideoMetadata {
     title: String,
     description: String,
@@ -34,6 +37,15 @@ impl VideoMetadata {
     }
 }
 
+fn estimate_duration_from_text(text: &str) -> f32 {
+    // Average speaking rate is about 150 words per minute
+    // So each word takes approximately 0.4 seconds
+    const SECONDS_PER_WORD: f32 = 0.4;
+    
+    let word_count = text.split_whitespace().count();
+    word_count as f32 * SECONDS_PER_WORD
+}
+
 async fn generate_metadata(
     formatted_text: &str,
 ) -> Result<VideoMetadata, Box<dyn std::error::Error>> {
@@ -53,6 +65,15 @@ async fn generate_metadata(
 }
 
 async fn generate_base_video(formatted_text: &str) -> Result<(), Box<dyn std::error::Error>> {
+    // video_generator::generate_video_from_args(
+    //     constants::VIDEO_INPUT_PATH,
+    //         constants::AUDIO_OUTPUT_PATH,
+    //         formatted_text,
+    //         constants::VIDEO_OUTPUT_PATH,
+    //         constants::VIDEO_FONT_SIZE,
+    //         constants::VIDEO_BG_COLOR,
+    // )?;
+
     video::execute_python_video_generator(
         constants::VIDEO_INPUT_PATH,
         constants::AUDIO_OUTPUT_PATH,
@@ -109,33 +130,55 @@ async fn process_short_video(
 async fn process_long_video(
     metadata: &VideoMetadata,
     formatted_confession: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    generate_base_video(formatted_confession).await?;
+) -> Result<(), Box<dyn std::error::Error + Send>> {
+    generate_base_video(formatted_confession).await.unwrap();
 
-    let split_result =
-        splitter::split_media(constants::VIDEO_OUTPUT_PATH, constants::OUTPUTS_FOLDER)?;
+    let split_result = 
+        splitter::split_media(constants::VIDEO_OUTPUT_PATH, constants::OUTPUTS_FOLDER).unwrap();
 
     let total_parts = split_result.video_paths.len();
-    let episode = utils::get_current_episode()?;
+    let episode = utils::get_current_episode().unwrap();
+
+    // Create a vector to hold all upload tasks
+    let mut upload_tasks = Vec::new();
 
     for (i, video_path) in split_result.video_paths.iter().enumerate() {
         let part_number = i + 1;
-
+        
         if !video_path.to_str().unwrap().contains("original_") {
-            upload_video(
-                video_path.to_str().unwrap(),
-                metadata,
-                episode,
-                Some((part_number, total_parts)),
-            )
-            .await?;
+            // Clone necessary values for the async task
+            let video_path = video_path.to_str().unwrap().to_string();
+            let metadata = metadata.clone();  // Requires #[derive(Clone)] on VideoMetadata
 
-            tokio::time::sleep(Duration::from_secs(5)).await;
+            // Spawn a new task for each upload
+            let upload_task = task::spawn(async move {
+                upload_video(
+                    &video_path,
+                    &metadata,
+                    episode,
+                    Some((part_number, total_parts)),
+                ).await
+                .map_err(|e| -> Box<dyn std::error::Error + Send> {
+                    Box::new(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Upload failed: {}", e)
+                    ))
+                })
+            });
+
+            upload_tasks.push(upload_task);
         }
     }
 
+    // Wait for all uploads to complete
+    join_all(upload_tasks).await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>().unwrap()
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
+
     if !constants::IS_DEBUGGING {
-        utils::increment_episode()?;
+        utils::increment_episode().unwrap();
     }
 
     Ok(())
@@ -166,28 +209,29 @@ async fn get_valid_confession_and_metadata(
                     && !metadata.title.to_lowercase().contains("i cannot")
                     && !metadata.title.to_lowercase().contains("unable to process")
                 {
-                    // Generate TTS and check duration
-                    tts::generate_tts(
-                        &formatted_confession,
-                        constants::AUDIO_OUTPUT_PATH,
-                        constants::AUDIO_VOICE,
-                        constants::AUDIO_MODEL,
-                    )?;
+                    // Estimate duration before generating TTS
+                    let estimated_duration = estimate_duration_from_text(&formatted_confession);
 
-                    let video_duration =
-                        video::get_duration_from_audio(constants::AUDIO_OUTPUT_PATH)?;
-
-                    if video_duration >= constants::MINIMUM_VIDEO_DURATION {
+                    if estimated_duration >= constants::MINIMUM_VIDEO_DURATION {
                         println!(
-                            "Valid confession found on attempt {} with duration {:.2}s",
+                            "Valid confession found on attempt {} with estimated duration {:.2}s",
                             attempt + 1,
-                            video_duration
+                            estimated_duration
                         );
+                        
+                        // Generate TTS only after we know the estimated duration is acceptable
+                        tts::generate_tts(
+                            &formatted_confession,
+                            constants::AUDIO_OUTPUT_PATH,
+                            constants::AUDIO_VOICE,
+                            constants::AUDIO_MODEL,
+                        )?;
+
                         return Ok((confession_result, metadata));
                     } else {
                         println!(
-                            "Confession duration {:.2}s too short (minimum {:.2}s). Retrying...",
-                            video_duration,
+                            "Estimated confession duration {:.2}s too short (minimum {:.2}s). Retrying...",
+                            estimated_duration,
                             constants::MINIMUM_VIDEO_DURATION
                         );
                     }
@@ -239,7 +283,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         process_short_video(&formatted_confession, &metadata).await?;
     } else {
         notify_with_sound("Long Video ...", "data/sounds/Ani_Alert.wav").await?;
-        process_long_video(&metadata, &formatted_confession).await?;
+        process_long_video(&metadata, &formatted_confession).await.unwrap();
     }
 
     tokio::time::sleep(Duration::from_secs(2)).await;
